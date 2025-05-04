@@ -3353,7 +3353,6 @@ def short_binaries(df_path, p_thresh=7):
                                                                         min_feh=-0.05, max_feh=0.05)
     plot_p_cutoffs_on_poly(np.array(teff_bins), p_cutoffs, err_teff, poly)
 
-    exit()
 
     binaries_final = potential_binaries(df_full, clusters, kinematic_df)
 
