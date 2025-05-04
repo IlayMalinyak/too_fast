@@ -39,6 +39,8 @@ from sklearn.metrics import mean_squared_error
 from math import sqrt
 import requests
 from astropy.io import ascii
+import warnings
+warnings.filterwarnings('ignore')
 
 
 JUPYTER_RAD = 11.2
@@ -205,7 +207,7 @@ def plot_density_boundary(teff, kmag_diff, boundary_fn, smooth=True):
 
     plt.colorbar(label='Density')
     plt.xlabel('Teff (K)')
-    plt.ylabel('$\Delta K_{iso}$')
+    plt.ylabel('$\Delta K_{iso}$ (mag)')
     plt.gca().invert_yaxis()
     plt.gca().invert_xaxis()
     plt.savefig("imgs/boundaries.png")
@@ -1425,7 +1427,7 @@ def plot_binary_props(df, binary_df, cat_name, p_name='period', p_err_name='peri
     binary_short = binary_df[binary_df[p_name] < 100].dropna(subset=['r_p', 'period_ratio'])
 
     scatter_synchronization_stability(binary_short, cat_name, e_name, p_name='period', y_name='predicted period',
-                                      xlabel=r'$P_{orb}$', ylabel=r'$P_{rot}$')
+                                      xlabel=r'$P_{orb}$ (Days)', ylabel=r'$P_{rot}$ (Days)')
     scatter_synchronization_stability(binary_df, cat_name, e_name, xlabel=r'$P_{orb} / P_{rot}$', ylabel='$r_p$ (AU)',
                                       p_name='period_ratio', y_name='r_p',
                                       logy=True, logx=True,
@@ -2281,52 +2283,16 @@ def magnitude_displacement(df, known_binaries, min_feh=-0.1, max_feh=0.1):
     known_binaries = known_binaries[(known_binaries['kmag_diff'].abs() < 2) & (known_binaries['kmag_diff'] < 0)
                                     & (known_binaries['FeH'] > min_feh) & (known_binaries['FeH'] < max_feh)]
     print("after magnitude threshold: ", len(df))
-    df_slow = df[df['predicted period'] >= 20]
-    # plot_tables(df , name='clean')
-    # boundary = plot_hr_main_squence_line(df, other=knwon_binaries, poly_ord=2)
-    # mag_boxplot([df, knwon_binaries], ['Kepler', 'gaia+EBs'], bin_size=200)
-    boundary_fn = get_kmag_boundaries(df, known_binaries, 7000)
-    # boundary_fn = partial(piecewise_boundary, poly=poly, x_min=3800, x_max=5600)
-    # boundary_fn_single = partial(piecewise_boundary_single, poly=poly, x_min=3800, x_max=5600)
-    plot_density_boundary(df['Teff'], df['kmag_diff'], boundary_fn=boundary_fn)
-    # exit()
-    # mag_boxplot([df_fast, knwon_binaries], ['Kepler Fast', 'gaia+EBs'], mag_label='kmag_diff', bin_size=200)
-    # mag_boxponlylot([df_slow, knwon_binaries], ['Kepler Slow', 'gaia+EBs'], mag_label='kmag_diff', bin_size=200)
-    # mag_boxplot([df_slow, df_fast], ['Kepler Fasr', 'Kepler Slow'], mag_label='kmag_diff', bin_size=200)
 
-    # boundary = find_density_boundary(df['Teff'].values, df['kmag_diff'].values,
-    #                                  kmag_range=[-0.33, 0], teff_bins=20, teff_range=[4400, 6000])
-    # plot_density_boundary(df['Teff'].values, df['kmag_diff'].values, boundary, smooth=True)
+    boundary_fn = get_kmag_boundaries(df, known_binaries, 7000)
+
+    plot_density_boundary(df['Teff'], df['kmag_diff'], boundary_fn=boundary_fn)
     df['position'] = df.apply(lambda x: is_binary(boundary_fn, x['Teff'], x['kmag_diff'],
                                                   teff_range=[3800, 7000]), axis=1)
     known_binaries['position'] = known_binaries.apply(lambda x: is_binary(boundary_fn, x['Teff'], x['kmag_diff']), axis=1)
     df['kmag_binary'] = df.apply(lambda x: x['position']=='binary', axis=1)
     known_binaries['kmag_binary'] = known_binaries.apply(lambda x: x['position']=='binary', axis=1)
     df.loc[df['position']=='boundary', 'binary'] = np.nan
-    # df['binary'] = df.apply(lambda x: x['kmag_diff']< - 0.01, axis=1)
-    # known_binaries['binary'] = known_binaries.apply(lambda x: x['kmag_diff'] < - 0.01, axis=1)
-
-
-
-    # plot_feh_bins(df)
-
-    df_fast = df[df['predicted period'] < 7]
-    tab10 = get_cmap('tab10')
-    tab10_colors = [tab10(i) for i in range(tab10.N)]
-    # ax = plot_binaries_frac(known_binaries, c=tab10_colors[0], label='gaia+EBs')
-    # ax = plot_binaries_frac(df_fast, c=tab10_colors[-1], ax=ax, label='Kepler Fast')
-    # ax = plot_binaries_frac(df, ax=ax, c=tab10_colors[4], label='Kepler')
-    # ax = plot_binaries_frac(short_b, ax=ax, c=tab10_colors[-1], label='Kepler Fast')
-    # ax.legend()
-    # ax.hlines(0.75, 4000, 6400, linestyles='dashed', colors='gray')
-    # ax.set_xlabel('$T_{eff}$')
-    # ax.set_ylabel('Fraction of Binaries (%)')
-    # plt.savefig('imgs/binaries_fracs.png')
-    # plt.show()
-    # plot_tables(df,other=known_binaries, line_of_best_fit=boundary, hline=[0], vline=[6000], data_col='kmag_diff', name='all')
-    # plot_tables(short_b, simonian=None, other=None, color_col=None, hline=[0], data_col='kmag_diff', name='all_fast')
-    # plot_tables(known_binaries, simonian=None, other=None, color_col=None, hline=[0], data_col='kmag_diff', name='all_binaries')
-    # sample_binaries()
     df = df.dropna(subset=['binary'])
     known_binaries = known_binaries.dropna(subset=['kmag_binary'])
     teffs = [4400, 5000, 5400, 5800, 6200, 6400, 6600]
@@ -2342,7 +2308,6 @@ def magnitude_displacement(df, known_binaries, min_feh=-0.1, max_feh=0.1):
     #                                                data_col='kmag_diff', method='g-r boundary', plot_every=1,
     #                                                name='norm_long', fit=False)
     # show_period_cutoff(ax, 'predicted_period', name='binary')
-
 
     return df, t, p, err_t, err_p, boundary_fn
 
@@ -2561,7 +2526,7 @@ def get_catalogs_short_period():
     short = get_mag_data(short, mist_path=MIST_PATH)
     return short
 
-def potential_triples(known_binaries, df, clusters, min_teff=3800,
+def potential_triples(known_binaries, df, clusters, kinematic_df, min_teff=3800,
                       max_teff=6800, n_bins=10, boundary_fn=None, kmag_thresh=-0.3):
     print("max teff: ", max_teff)
     # known_binaries = known_binaries[known_binaries['FeH'].abs() < 0.05]
@@ -2602,6 +2567,7 @@ def potential_triples(known_binaries, df, clusters, min_teff=3800,
                            'kmag_abs', 'Kmag_MIST', 'Prot_ref']]
     triples_final[['Prot', 'kmag_diff', 'kmag_abs', 'Kmag_MIST']] = \
         triples_final[['Prot', 'kmag_diff', 'kmag_abs', 'Kmag_MIST']].round(decimals=3)
+    triples_final = triples_final.merge(kinematic_df[['KID', 'sigma']], how='left')
 
     plt.gca().invert_yaxis()
     plt.gca().invert_xaxis()
@@ -2664,7 +2630,7 @@ def potential_triples(known_binaries, df, clusters, min_teff=3800,
     plt.plot(teffs, kmag_mid_long,  color='silver', label='$P_{rot} > 7 $ days')
     plt.plot(teffs, kmag_mid_middle,  color='plum', label='$3 < P_{rot} < 7 $ days')
     plt.xlabel('Teff (K)')
-    plt.ylabel('$\Delta K_{iso}$')
+    plt.ylabel('$\Delta K_{iso}$ (mag)')
     plt.legend()
     plt.gca().invert_xaxis()
     plt.gca().invert_yaxis()
@@ -3333,7 +3299,7 @@ def plot_binary_probs(binaries, t_binaries, poly, probs_model):
     plt.savefig('imgs/teff_prot_b_prob_sigma.png')
     plt.show()
 
-def potential_binaries(df, clusters):
+def potential_binaries(df, clusters, kinematic_df):
     binaries = df[df['binary']]
     binaries['Prot_ref'] = 'Kamai24'
     binaries = binaries[['KID', 'predicted period', 'Teff', 'logg', 'FeH', 'kmag_diff',
@@ -3341,8 +3307,22 @@ def potential_binaries(df, clusters):
     bouma24 = pd.read_csv('tables/bouma2024_planets.csv')
     bouma_fast = bouma24[(bouma24['li_median'] < 300) & (bouma24['gyro_median'] < 300)]
     binaries = binaries[~binaries['KID'].isin(bouma_fast['kepid'])]
-    binaries_final = binaries[~binaries['KID'].isin(clusters['KID'])]
+    binaries = binaries[~binaries['KID'].isin(clusters['KID'])]
+    binaries_final = binaries.merge(kinematic_df[['KID', 'sigma']], on='KID', how='left')
+
     return binaries_final
+
+def plot_p_cutoffs_on_poly(teff_bins, p_cutoffs, err_teff, poly):
+    plt.scatter(teff_bins, p_cutoffs, c='black', s=100)
+    plt.errorbar(teff_bins, p_cutoffs, xerr=err_teff, fmt='none', capsize=0, ecolor='gray')
+    x = np.linspace(teff_bins.min() - 400, teff_bins.max(), 200)
+    y = poly(x)
+    plt.plot(x, y, c='gold')
+    plt.gca().invert_xaxis()
+    plt.xlabel('Teff (K)')
+    plt.ylabel('$P_{rot}$ (Days)')
+    plt.savefig('imgs/p_cutoff_vs_initial_p.png')
+    plt.show()
 
 def short_binaries(df_path, p_thresh=7):
     (df_full, df_short, simonian, gaia_nss, gaia_wide, ebs,
@@ -3356,7 +3336,7 @@ def short_binaries(df_path, p_thresh=7):
     print("before filtering: ", len(df_full))
     df = filter_main_sequence_with_logg(df_full, n_bins=40)
     print("after filtering: ", len(df))
-    godoy, godoy_binary = godoy_binaries(df, poly, 20)
+    # godoy, godoy_binary = godoy_binaries(df, poly, 20)
     known_binaries = pd.concat([gaia_nss, ebs])
     known_binaries = pd.concat([known_binaries, pd.get_dummies(known_binaries['nss_solution_type'])])
     known_binaries['is_eb'] = known_binaries['nss_solution_type'].astype(str).apply(
@@ -3371,9 +3351,13 @@ def short_binaries(df_path, p_thresh=7):
     #
     df_reduced, teff_bins, p_cutoffs, err_teff, err_p, kmag_boundary = magnitude_displacement(df, known_binaries,
                                                                         min_feh=-0.05, max_feh=0.05)
-    binaries_final = potential_binaries(df, clusters)
+    plot_p_cutoffs_on_poly(np.array(teff_bins), p_cutoffs, err_teff, poly)
 
-    triples_final = potential_triples(known_binaries_ms, df, clusters, max_teff=6500, boundary_fn=kmag_boundary)
+    exit()
+
+    binaries_final = potential_binaries(df_full, clusters, kinematic_df)
+
+    triples_final = potential_triples(known_binaries_ms, df, clusters, kinematic_df, max_teff=6500, boundary_fn=kmag_boundary)
 
     triples_final['binary'] = triples_final.apply(lambda x: poly(x['Teff']) > x['Prot'], axis=1)
     t_binaries = triples_final[triples_final['binary']]
@@ -3494,6 +3478,7 @@ def plot_period_cutoffs(df, p_thresh, p_min=4, bin_size=2, ax=None, linestyle='-
 
         if len(fracs):
             fracs = fracs / fracs[-1]
+            print(teff, fracs.max())
             thresh_idx = np.where(fracs > 1.06)[0]
             if len(thresh_idx):
                 minima_points.append(bins[thresh_idx[-1]])
@@ -3770,7 +3755,7 @@ def get_binary_frac(df, ps, data_col, p_name='predicted period', bin_size=2, cum
             df_b = df[df[p_name] <= p]
             if len(df_b) > 2:
                 n_total = len(df_b)
-                n_binary = len(df_b[df_b['binary']])
+                n_binary = len(df_b[df_b['kmag_binary']])
                 # n_binary = len(df_b[df_b[data_col] < -0.1])
                 binary_frac = n_binary / n_total or np.nan
 
@@ -3779,7 +3764,7 @@ def get_binary_frac(df, ps, data_col, p_name='predicted period', bin_size=2, cum
 
                 binaries_frac.append(binary_frac)
                 errors.append(error)
-                avgs.append(df_b[df_b['binary']][data_col].mean())
+                avgs.append(df_b[df_b['kmag_binary']][data_col].mean())
                 bins_mid.append(p)
     else:
         min_p = min(ps)
@@ -3799,14 +3784,14 @@ def get_binary_frac(df, ps, data_col, p_name='predicted period', bin_size=2, cum
             if bin_interval in bin_counts.index and bin_counts[bin_interval] >= 5:
                 df_b = df[df['bin'] == bin_interval]
                 n_total = len(df_b)
-                n_binary = len(df_b[df_b['binary']])
+                n_binary = len(df_b[df_b['kmag_binary']])
                 binary_frac = n_binary / n_total
 
                 error = binary_frac * np.sqrt(1 / n_binary + 1 / n_total) if n_binary > 0 else 0
 
                 binaries_frac.append(binary_frac)
                 errors.append(error)
-                avgs.append(df_b[df_b['binary']][data_col].mean())
+                avgs.append(df_b[df_b['kmag_binary']][data_col].mean())
                 bins_mid.append(bin_interval.mid)
 
         df.drop('bin', axis=1, inplace=True)
@@ -3947,8 +3932,8 @@ def planet_host(df, boundary, probs_model, clusters, disposition='CONFIRMED'):
     for i, txt in enumerate(planet_binaries['kepler_name']):
         plt.text(planet_binaries.iloc[i]['Teff'], planet_binaries.iloc[i]['predicted period'] - 0.3,
                  txt, fontsize=16, ha='right', va='bottom')
-    plt.xlabel('$T_{eff}$')
-    plt.ylabel('$P_{rot}$')
+    plt.xlabel('$T_{eff}$ (K)')
+    plt.ylabel('$P_{rot}$ (Days)')
     plt.gca().invert_xaxis()
     plt.savefig('imgs/planet_host_scatter')
     plt.show()
@@ -3968,8 +3953,8 @@ def planet_host(df, boundary, probs_model, clusters, disposition='CONFIRMED'):
         plt.text(row['Teff'], row['predicted period'] - 0.3,
                  name, fontsize=16, ha='right', va='bottom')
     plt.plot(x,y,c='gold')
-    plt.xlabel('$T_{eff}$')
-    plt.ylabel('$P_{rot}$')
+    plt.xlabel('$T_{eff}$ (K)')
+    plt.ylabel('$P_{rot}$ (Days)')
     plt.gca().invert_xaxis()
     plt.savefig('imgs/circum_candidates')
 
@@ -4505,7 +4490,7 @@ def kinematic_age(df, known_binaries, poly):
         err_probs.append(excess_res['error'])
     plt.plot(sigmas_threshs, young_probs)
     plt.errorbar(sigmas_threshs, young_probs, yerr=err_probs, fmt='none', color='gray')
-    plt.xlabel(r'$\sigma_{thresh}(km \cdot s^{-1})$')
+    plt.xlabel(r'$\sigma_{thresh}\, (km \cdot s^{-1})$')
     plt.ylabel('distribution excess')
     plt.savefig('imgs/young_probs_sigma.png')
     plt.show()
@@ -4550,7 +4535,7 @@ def kinematic_age(df, known_binaries, poly):
              density=True, bins=20, color='lightsalmon',
              label=r'$\sigma \geq 12$ $(km \cdot s^{-1})$')
     plt.legend()
-    plt.xlabel('$P_{rot}$')
+    plt.xlabel('$P_{rot}$ (Days)')
     plt.ylabel('pdf')
     plt.savefig('imgs/young_old_prot_dist.png')
     plt.show()
@@ -4573,7 +4558,7 @@ def kinematic_age(df, known_binaries, poly):
              density=True, bins=20, color='lightsalmon',
              label=r'$\sigma \geq 12$ $(km \cdot s^{-1})$')
     plt.legend()
-    plt.xlabel(r'$\Delta K_{iso}$')
+    plt.xlabel(r'$\Delta K_{iso}$ (mag)')
     plt.ylabel('pdf')
     plt.savefig('imgs/young_old_kmag_dist.png')
     plt.show()
